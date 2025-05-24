@@ -16,6 +16,7 @@ notebook = "^7.4.2"
 jupyter = "^1.1.1"
 seaborn = "^0.13.2"
 sklearn-preprocessing = "^0.1.0"
+sympy = "^1.14.0"
 
 
 [build-system]
