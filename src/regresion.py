@@ -4,6 +4,7 @@ from sklearn.linear_model import Lasso, Ridge
 from sklearn.metrics import mean_absolute_error
 from dataclasses import dataclass
 import pandas as pd
+from sklearn.compose import TransformedTargetRegressor
 
 @dataclass
 class ModelEvaluation:
@@ -26,11 +27,18 @@ def calculate_mae_with_ridge(X_train, y_train, X_val, y_val, X_test, y_test, deg
     Parameters:
     alpha: float, regularization strength (larger values mean more regularization)
     """
-    model = Pipeline([
+    # scaler, polynomial features, and ridge regression
+    pipeline = Pipeline([
         ('scaler', StandardScaler()),
         ('poly', PolynomialFeatures(degree=degree, include_bias=False)),
         ('ridge', Ridge(alpha=alpha))  # Usamos Ridge en lugar de LinearRegression, R
     ])
+
+     # transformed target regressor to handle target scaling
+    model = TransformedTargetRegressor(
+        regressor=pipeline,
+        transformer=StandardScaler()
+    )
     
     model.fit(X_train, y_train)
 
@@ -54,11 +62,18 @@ def calculate_mae_with_lasso(X_train, y_train, X_val, y_val, X_test, y_test, deg
     Parameters:
     alpha: float, regularization strength (larger values mean more regularization)
     """
-    model = Pipeline([
+    # scaler, polynomial features, and lasso regression
+    pipeline = Pipeline([
         ('scaler', StandardScaler()),  # Escalamos los datos para mejorar la convergencia de Lasso
         ('poly', PolynomialFeatures(degree=degree, include_bias=False)), # Convierte X en [X, X², X³, ...]
         ('lasso', Lasso(alpha=alpha, max_iter=10000))  # Aumentamos max_iter para convergencia
     ])
+
+    # transformed target regressor to handle target scaling
+    model = TransformedTargetRegressor(
+        regressor=pipeline,
+        transformer=StandardScaler()
+    )
     
     model.fit(X_train, y_train)
 
@@ -107,7 +122,7 @@ def export_predictions_to_csv(X, y, y_pred, split_name: str, feature_names: list
     df['prediction'] = y_pred
     df['delta'] = y - y_pred
     filename = f"{filename_prefix}_{split_name}.csv"
-    df.to_csv(filename, index=False)
+    df.to_csv(filename, index=False, float_format='%.4f')
 
 
 
@@ -121,19 +136,26 @@ X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, r
 
 
 # If we use L2 regularization (ridge regression), we end up with a model with smaller coefficients. 
-# degrees = range(1, 11)
-# alphas = [0.001, 0.01, 0.1, 1, 10, 100]  # Diferentes valores de alpha para probar
-# print("Finding best Ridge regression model (L2 Norm)...")
-# best_model_evaluation = find_best_regresion_model(X_train, y_train, X_val, y_val, X_test, y_test, degrees, alphas, calculate_mae_with_ridge)
+degrees = range(1, 11)
+alphas = [0.001, 0.01, 0.1, 1, 10, 100]  # Diferentes valores de alpha para probar
+print("Finding best Ridge regression model (L2 Norm)...")
+best_ridge_model = find_best_regresion_model(X_train, y_train, X_val, y_val, X_test, y_test, degrees, alphas, calculate_mae_with_ridge)
 
 # If we use L1 regularization (lasso regression), you end up with a model with fewer coefficients. 
 degrees = range(1, 6)  # Con L1, grados altos pueden ser problemáticos
 alphas = [0.0001, 0.001, 0.01, 0.1, 1, 10]  # Alpha necesita valores más pequeños que con L2
 print("Finding best Lasso regression model (L1 Norm)...")
-best_model_evaluation = find_best_regresion_model(X_train, y_train, X_val, y_val, X_test, y_test,degrees, alphas, calculate_mae_with_lasso)
+best_lasso_model = find_best_regresion_model(X_train, y_train, X_val, y_val, X_test, y_test,degrees, alphas, calculate_mae_with_lasso)
+
+best_model_evaluation = None
+if best_ridge_model.mae_val < best_lasso_model.mae_val:
+    best_model_evaluation = best_ridge_model
+else:
+    best_model_evaluation = best_lasso_model
 
 
 print("Best Model Found:")
+print(f"Model type: {'Ridge' if isinstance(best_model_evaluation.model.regressor_, Ridge) else 'Lasso'}")
 print(f"Degree: {best_model_evaluation.degree}")
 print(f"Alpha: {best_model_evaluation.alpha:.4f}")
 print(f"Train MAE: {best_model_evaluation.mae_train:.2f}")
@@ -142,7 +164,7 @@ print(f"Test MAE: {best_model_evaluation.mae_test:.2f}")
 
 feature_names = load_diabetes().feature_names
 filename_prefix = "datasets/processed/diabetes"
-
 export_predictions_to_csv(X_train, y_train, best_model_evaluation.y_train_pred, "train", feature_names, filename_prefix)
 export_predictions_to_csv(X_val, y_val, best_model_evaluation.y_val_pred, "val", feature_names, filename_prefix)
 export_predictions_to_csv(X_test, y_test, best_model_evaluation.y_test_pred, "test", feature_names, filename_prefix)
+export_predictions_to_csv(X, y, best_model_evaluation.model.predict(X), "full", feature_names, filename_prefix)
