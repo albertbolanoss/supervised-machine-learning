@@ -2,6 +2,20 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import PolynomialFeatures, StandardScaler
 from sklearn.linear_model import Lasso, Ridge
 from sklearn.metrics import mean_absolute_error
+from dataclasses import dataclass
+import pandas as pd
+
+@dataclass
+class ModelEvaluation:
+    mae_train: float
+    mae_val: float
+    mae_test: float
+    y_train_pred: list
+    y_val_pred: list
+    y_test_pred: list
+    model: Pipeline
+    degree: int
+    alpha: float
 
 # If we use L2 regularization (ridge regression), we end up with a model with smaller coefficients. 
 # In other words, L2 regularization shrinks all the coefficients but rarely turns them into zero.
@@ -13,7 +27,7 @@ def calculate_mae_with_ridge(X_train, y_train, X_val, y_val, X_test, y_test, deg
     alpha: float, regularization strength (larger values mean more regularization)
     """
     model = Pipeline([
-        #('scaler', StandardScaler()),
+        ('scaler', StandardScaler()),
         ('poly', PolynomialFeatures(degree=degree, include_bias=False)),
         ('ridge', Ridge(alpha=alpha))  # Usamos Ridge en lugar de LinearRegression, R
     ])
@@ -28,7 +42,7 @@ def calculate_mae_with_ridge(X_train, y_train, X_val, y_val, X_test, y_test, deg
     mae_val = mean_absolute_error(y_val, y_val_pred)
     mae_test = mean_absolute_error(y_test, y_test_pred)
 
-    return mae_train, mae_val, mae_test, model
+    return ModelEvaluation(mae_train, mae_val, mae_test, y_train_pred, y_val_pred, y_test_pred, model, degree, alpha)
 
 
 # If we use L1 regularization (lasso regression), you end up with a model with fewer coefficients. 
@@ -56,47 +70,49 @@ def calculate_mae_with_lasso(X_train, y_train, X_val, y_val, X_test, y_test, deg
     mae_val = mean_absolute_error(y_val, y_val_pred)
     mae_test = mean_absolute_error(y_test, y_test_pred)
 
-    return mae_train, mae_val, mae_test, model
+    return ModelEvaluation(mae_train, mae_val, mae_test, y_train_pred, y_val_pred, y_test_pred, model, degree, alpha)
 
 
 def find_best_regresion_model(X_train, y_train, X_val, y_val, X_test, y_test, degrees, alphas, calculate_mae_with_regression):
-    best_degree = None
-    best_alpha = None
-    best_train_mae = float('inf')
     best_mae_val = float('inf')
-    best_test_mae = float('inf')
-    best_model = None
+    best_model_evaluation = None
     
     for degree in degrees:
         for alpha in alphas:
-            mae_train, mae_val, mae_test, model = calculate_mae_with_regression(X_train, y_train, X_val, y_val, X_test, y_test, degree, alpha)
+            model_evaluation = calculate_mae_with_regression(X_train, y_train, X_val, y_val, X_test, y_test, degree, alpha)
             
             # print(f"Degree: {d}, Alpha: {alpha:.4f}, Train MAE: {mae_train:.2f}, Val MAE: {mae_val:.2f}, Test MAE: {mae_test:.2f}")
             
-            if mae_val < best_mae_val:
-                best_model = model
-                best_train_mae = mae_train
-                best_mae_val = mae_val
-                best_test_mae = mae_test
-                best_degree = degree
-                best_alpha = alpha
+            if model_evaluation.mae_val < best_mae_val:
+                best_model_evaluation = model_evaluation
+                best_mae_val = model_evaluation.mae_val
                 
 
-    print("Best Model Found:")
-    print(f"Degree: {best_degree}")
-    print(f"Alpha: {best_alpha:.4f}")
-    print(f"Train MAE: {best_train_mae:.2f}")
-    print(f"Validation MAE: {best_mae_val:.2f}")
-    print(f"Test MAE: {best_test_mae:.2f}")
+    return best_model_evaluation
 
-    return best_model, best_degree, best_alpha, best_train_mae, best_mae_val, best_test_mae
-
+def export_predictions_to_csv(X, y, y_pred, split_name: str, feature_names: list, filename_prefix: str = "predictions"):
+    """
+    Exporta un CSV con las columnas del dataset, el valor real y el valor predicho.
+    
+    Parameters:
+    - X: np.ndarray o pd.DataFrame, features
+    - y: array-like, valores reales
+    - y_pred: array-like, predicciones del modelo
+    - split_name: str, uno de 'train', 'val' o 'test'
+    - feature_names: list of str, nombres de las columnas
+    - filename_prefix: str, prefijo del archivo de salida
+    """
+    df = pd.DataFrame(X, columns=feature_names)
+    df['target'] = y
+    df['prediction'] = y_pred
+    df['delta'] = y - y_pred
+    filename = f"{filename_prefix}_{split_name}.csv"
+    df.to_csv(filename, index=False)
 
 
 
 from sklearn.datasets import load_diabetes
 from sklearn.model_selection import train_test_split
-import matplotlib.pyplot as plt
 
 # Load and split dataset
 X, y = load_diabetes(return_X_y=True)
@@ -105,15 +121,28 @@ X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, r
 
 
 # If we use L2 regularization (ridge regression), we end up with a model with smaller coefficients. 
-degrees = range(1, 11)
-alphas = [0.001, 0.01, 0.1, 1, 10, 100]  # Diferentes valores de alpha para probar
-print("Finding best Ridge regression model (L2 Norm)...")
-find_best_regresion_model(X_train, y_train, X_val, y_val, X_test, y_test, degrees, alphas, calculate_mae_with_ridge)
+# degrees = range(1, 11)
+# alphas = [0.001, 0.01, 0.1, 1, 10, 100]  # Diferentes valores de alpha para probar
+# print("Finding best Ridge regression model (L2 Norm)...")
+# best_model_evaluation = find_best_regresion_model(X_train, y_train, X_val, y_val, X_test, y_test, degrees, alphas, calculate_mae_with_ridge)
 
 # If we use L1 regularization (lasso regression), you end up with a model with fewer coefficients. 
 degrees = range(1, 6)  # Con L1, grados altos pueden ser problemáticos
 alphas = [0.0001, 0.001, 0.01, 0.1, 1, 10]  # Alpha necesita valores más pequeños que con L2
 print("Finding best Lasso regression model (L1 Norm)...")
-find_best_regresion_model(X_train, y_train, X_val, y_val, X_test, y_test,degrees, alphas, calculate_mae_with_lasso)
+best_model_evaluation = find_best_regresion_model(X_train, y_train, X_val, y_val, X_test, y_test,degrees, alphas, calculate_mae_with_lasso)
 
 
+print("Best Model Found:")
+print(f"Degree: {best_model_evaluation.degree}")
+print(f"Alpha: {best_model_evaluation.alpha:.4f}")
+print(f"Train MAE: {best_model_evaluation.mae_train:.2f}")
+print(f"Validation MAE: {best_model_evaluation.mae_val:.2f}")
+print(f"Test MAE: {best_model_evaluation.mae_test:.2f}")
+
+feature_names = load_diabetes().feature_names
+filename_prefix = "datasets/processed/diabetes"
+
+export_predictions_to_csv(X_train, y_train, best_model_evaluation.y_train_pred, "train", feature_names, filename_prefix)
+export_predictions_to_csv(X_val, y_val, best_model_evaluation.y_val_pred, "val", feature_names, filename_prefix)
+export_predictions_to_csv(X_test, y_test, best_model_evaluation.y_test_pred, "test", feature_names, filename_prefix)
