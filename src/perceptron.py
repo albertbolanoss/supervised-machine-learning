@@ -45,7 +45,7 @@ def perceptron_algorithm(features, labels, learning_rate = 0.01, epochs = 200):
         error = mean_perceptron_error(weights, bias, features, labels)
         errors.append(error)
         i = random.randint(0, len(features)-1)
-        weights, bias = perceptron_trick(weights, bias, features[i], labels[i])
+        weights, bias = perceptron_trick(weights, bias, features[i], labels[i], learning_rate)
     
     plt.scatter(range(epochs), errors)
     plt.show()
