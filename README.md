@@ -6,6 +6,7 @@
 - [Poetry](https://python-poetry.org/docs/)
 
 ## Install Pyenv and Poetry
+
 ```sh
 # Using pipx
 python3 -m pip install --user pipx
@@ -19,6 +20,7 @@ source ~/.bashrc  # o source ~/.zshrc
 ```
 
 ## Create Project
+
 ```sh
 pyenv install 3.13.0                                                    # Install the required python version
 pyenv local 3.13.0                                                      # Select this python versio to use in local mode
@@ -28,6 +30,7 @@ poetry add numpy pandas matplotlib scikit-learn notebook jupyter        # Add in
 ```
 
 ## Clone repository and install dependencies
+
 ```sh
 git clone https://github.com/albertbolanoss/supervised-machine-learning.git
 cd supervised-machine-learning.git
@@ -36,11 +39,11 @@ poetry install
 ```
 
 ## Other commands
+
 ```sh
 jupyter notebook                                                        # Run Jupiter notebook server
 ```
 
-
 ## References:
 
-- [Grokking Machine Learning](https://learning.oreilly.com/library/view/grokking-machine-learning/).
+- The theoretical content of this repository was taken from the book [Grokking Machine Learning](https://learning.oreilly.com/library/view/grokking-machine-learning/) written by Luis Serrano.
