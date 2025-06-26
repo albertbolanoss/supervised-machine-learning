@@ -77,3 +77,41 @@ def calculate_weighted_something(list_elements, index_split, function):
     RHS_weighted = numpy.dot(function(RHS), function(RHS))
 
     return scalar*(LHS_weighted + RHS_weighted)
+
+
+# Mean Squared Error (MSE) Calculations ===========================================================
+def subtract_mean(array):
+    """
+    Resulting set is has mean 0
+    """
+    if not numpy.any(array): # empty
+        return 0
+    return array - numpy.mean(array)
+
+def calculate_sum_squares(list_elements):
+    """
+    sum ( a_i**2 )
+    """
+    array_terms = numpy.array(list_elements)
+    array_squares = numpy.square(array_terms)
+    scalar_sum = numpy.sum(array_squares)
+
+    return scalar_sum
+
+def calculate_mse(list_elements, index_split, function):
+    """
+    MSE = (1/n) * ( sum( (x_i - f(x))**2 ) )
+    in which we split the sum between LHS and RHS
+    """
+
+    scalar = numpy.divide(1, len(list_elements))
+    LHS = list_elements[:index_split]
+    RHS = list_elements[index_split:]
+
+    LHS_terms = numpy.subtract(LHS, function(LHS))
+    RHS_terms = numpy.subtract(RHS, function(RHS))
+
+    LHS_scalar = calculate_sum_squares(LHS_terms)
+    RHS_scalar = calculate_sum_squares(RHS_terms)
+
+    return scalar*( LHS_scalar + RHS_scalar)

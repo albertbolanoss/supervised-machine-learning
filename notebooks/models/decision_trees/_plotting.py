@@ -1,5 +1,6 @@
 import numpy
 from matplotlib import pyplot as plt
+import numpy as np
 
 def plot_scatter(x_iterable, y_iterable, x_label = "", y_label = "",  legend = None, **kwargs):
     x_array = numpy.array(x_iterable)
@@ -58,3 +59,49 @@ def plot_decision_boundary_2D(matrix_features, array_labels, model, index_x = 0,
             marker = next(iter_markers)
             # label=iris.target_names[i],
             )
+        
+def plot_decision_boundary_1D(matrix_features, array_labels, model, label_type="regression"):
+    """
+    Visualiza la predicción de un modelo sobre una sola feature.
+    
+    - matrix_features: ndarray (n_samples, 1)
+    - array_labels: etiquetas verdaderas
+    - model: modelo entrenado (regresor o clasificador)
+    - label_type: "regression" o "classification"
+    """
+    
+    # Asegurar formato numpy
+    matrix_features = np.array(matrix_features)
+    array_labels = np.array(array_labels)
+
+    # Rango de entrada para predicción
+    x_min = matrix_features.min() - 1
+    x_max = matrix_features.max() + 1
+    X_plot = np.linspace(x_min, x_max, 500).reshape(-1, 1)
+    
+    # Predicciones del modelo
+    y_pred = model.predict(X_plot)
+
+    # Gráfico base
+    plt.figure(figsize=(8, 4))
+    
+    # Dispersión de los puntos reales
+    plt.scatter(matrix_features, array_labels, color="blue", label="Datos reales")
+
+    # Línea de predicción
+    if label_type == "regression":
+        plt.plot(X_plot, y_pred, color="orange", label="Predicción del modelo")
+    elif label_type == "classification":
+        plt.plot(X_plot, y_pred, color="green", label="Frontera de decisión", linewidth=2)
+        plt.yticks(np.unique(array_labels))
+    else:
+        raise ValueError("label_type debe ser 'regression' o 'classification'")
+
+    # Opcionales
+    plt.xlabel("Feature 0")
+    plt.ylabel("Label")
+    plt.legend()
+    plt.title("Decision Boundary 1D")
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
